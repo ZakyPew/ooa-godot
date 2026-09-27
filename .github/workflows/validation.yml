@@ -28,6 +28,7 @@ env:
   GODOT_MACOS_ARCHIVE_SHA256: 92cac516baa8ddc7756eeaa38a6d007778a968bfbf188db7c5d6e6ec21c5d52c
   WLA_DX_VERSION: '10.6'
   WLA_DX_ARCHIVE_SHA256: cbb3f8878f8028e6c2fb5cccd79dc9746518ee99def533c8e0b77cbd46a66091
+  WLA_DX_SOURCE_SHA: 89a90a56be5c2b8cf19a9afa3e1b32384ddb1a97
   ORACLES_DISASM_REPOSITORY: https://github.com/stewmath/oracles-disasm.git
   ORACLES_DISASM_MASTER_SHA: 7584d8723afcf8861c5c1c46fb07d747a12bc655
   ORACLE_OF_AGES_MD5: c4639cc61c049e5a085526bb6cac03bb
@@ -194,6 +195,55 @@ jobs:
           fi
           chmod +x "$godot_bin"
           echo "GODOT_BIN=$godot_bin" >> "$GITHUB_ENV"
+
+      - name: Build pinned source ROM and prepare local imports
+        shell: bash
+        run: |
+          set -euo pipefail
+          wla_root="$RUNNER_TEMP/wla-dx"
+          wla_build="$wla_root/build"
+          disassembly="$RUNNER_TEMP/oracles-disasm"
+          source_rom="$RUNNER_TEMP/oracle-of-ages-us.gbc"
+
+          python3 -m venv "$RUNNER_TEMP/wla-python"
+          source "$RUNNER_TEMP/wla-python/bin/activate"
+          python -m pip install --quiet PyYAML
+
+          git clone --quiet https://github.com/vhelin/wla-dx.git "$wla_root"
+          git -C "$wla_root" fetch --quiet --depth 1 origin "$WLA_DX_SOURCE_SHA"
+          git -C "$wla_root" checkout --quiet --detach FETCH_HEAD
+          cmake -S "$wla_root" -B "$wla_build" -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$wla_build" --config Release --parallel
+
+          wla_gb="$(find "$wla_root" -type f -name wla-gb -print -quit)"
+          wlalink="$(find "$wla_root" -type f -name wlalink -print -quit)"
+          if [[ -z "$wla_gb" || -z "$wlalink" ]]; then
+            echo "WLA-DX build did not produce both wla-gb and wlalink." >&2
+            exit 1
+          fi
+          export PATH="$(dirname "$wla_gb"):$(dirname "$wlalink"):$PATH"
+
+          git -C "$RUNNER_TEMP" init --quiet oracles-disasm
+          git -C "$disassembly" remote add origin "$ORACLES_DISASM_REPOSITORY"
+          git -C "$disassembly" fetch --quiet --depth 1 origin "$ORACLES_DISASM_MASTER_SHA"
+          git -C "$disassembly" checkout --quiet --detach FETCH_HEAD
+          make -C "$disassembly" ages
+
+          actual_md5="$(md5 -q "$disassembly/ages.gbc")"
+          if [[ "$actual_md5" != "$ORACLE_OF_AGES_MD5" ]]; then
+            echo "Expected Oracle of Ages MD5 $ORACLE_OF_AGES_MD5, got $actual_md5." >&2
+            exit 1
+          fi
+          mv "$disassembly/ages.gbc" "$source_rom"
+
+          {
+            echo "ORACLES_DISASSEMBLY=$disassembly"
+            echo "ORACLES_ROM=$source_rom"
+          } >> "$GITHUB_ENV"
+
+      - name: Generate runtime assets from the verified local ROM
+        shell: pwsh
+        run: ./tools/import_oracles.ps1 -Disassembly $env:ORACLES_DISASSEMBLY -Rom $env:ORACLES_ROM
 
       - name: Build with zero warnings
         shell: pwsh
