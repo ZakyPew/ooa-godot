@@ -42,8 +42,10 @@ focused validations; NPC classifications live in the
 - Full story/world progression, remaining dungeons and bosses, enemy variants,
   NPC scripts, and room mechanisms.
 - Remaining item upgrades and terrain-specific player states, including
-  top-down Mermaid Suit movement, deep-water transitions, Roc's Cape, and
-  incomplete seed and grabbable-object consumers.
+  top-down Mermaid Suit deep-water transitions, Roc's Cape, and incomplete
+  seed and grabbable-object consumers. Surface seawater swimming has an
+  initial Mermaid Suit movement path; underwater transitions remain
+  unsupported.
 - Remaining companion terrain states, thrown-NPC collisions, and exhaustive
   native initialization, slot reuse, and cross-object signal parity.
 - Ring effects whose underlying gameplay systems are not yet supported.

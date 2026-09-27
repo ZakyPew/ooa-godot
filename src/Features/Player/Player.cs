@@ -343,6 +343,7 @@ public partial class Player : Node2D
     private int _topDownSwimVelocityCounter;
     private int _topDownSwimBurstState;
     private int _topDownSwimBurstCounter;
+    private int _topDownSwimMermaidImpulseCounter;
     private int _topDownSwimAnimationFrame;
     private int _topDownSwimAnimationCounter;
     private bool _topDownDiving;
@@ -758,8 +759,12 @@ public partial class Player : Node2D
     internal int TopDownSwimAngle => _topDownSwimAngle;
     internal int TopDownSwimSpeedRaw => _topDownSwimSpeedRaw;
     internal int TopDownSwimTargetSpeedRaw => _topDownSwimTargetSpeedRaw;
+    internal int TopDownSwimVelocityCounter =>
+        _topDownSwimVelocityCounter;
     internal int TopDownSwimBurstState => _topDownSwimBurstState;
     internal int TopDownSwimBurstCounter => _topDownSwimBurstCounter;
+    internal int TopDownSwimMermaidImpulseCounter =>
+        _topDownSwimMermaidImpulseCounter;
     internal int TopDownSwimAnimationFrame => _topDownSwimAnimationFrame;
     internal int TopDownSwimAnimationCounter => _topDownSwimAnimationCounter;
     internal bool TopDownDiving => TopDownSwimming && _topDownDiving;
@@ -2166,7 +2171,8 @@ public partial class Player : Node2D
                 AngleForVector(previousMovementInput),
                 movementStart,
                 Input.IsActionJustPressed("attack"),
-                Input.IsActionJustPressed("item")))
+                Input.IsActionJustPressed("item"),
+                DirectionalInputJustPressed()))
         {
             return;
         }
@@ -4906,17 +4912,17 @@ public partial class Player : Node2D
 
     /// <summary>
     /// Port of the non-side-view linkUpdateSwimming states used by Flippers.
-    /// This includes normal-water linkUpdateDiving and the transition owner
-    /// may consume source-placed dive interactions. Mermaid Suit movement and
-    /// deep-water tile transitions remain owned by a later implementation, so
-    /// Ages SeaWater retains its drowning behavior on this path.
+    /// This includes normal-water linkUpdateDiving, surface Mermaid Suit
+    /// swimming, and source-placed dive interactions. Deep-water tile room
+    /// transitions remain owned by a later implementation.
     /// </summary>
     private bool TryAdvanceTopDownSwimming(
         Vector2 input,
         int entryAngle,
         Vector2 movementStart,
         bool attackJustPressed,
-        bool diveJustPressed)
+        bool diveJustPressed,
+        bool directionJustPressed)
     {
         if (_topDownAirborne || _world.RidingObject ||
             _minecartRideControlled || _companionRideControlled)
@@ -4932,8 +4938,11 @@ public partial class Player : Node2D
             return false;
         }
 
+        bool hasMermaidSuit =
+            _inventory.HasTreasure(TreasureId.MermaidSuit);
         bool unsupportedSeaWater =
-            activeTerrain.Terrain.Type == TerrainType.SeaWater;
+            activeTerrain.Terrain.Type == TerrainType.SeaWater &&
+            !hasMermaidSuit;
         bool hasFlippers =
             _inventory.HasTreasure(TreasureId.Flippers);
         if (unsupportedSeaWater || !hasFlippers)
@@ -4972,7 +4981,10 @@ public partial class Player : Node2D
         int inputAngle = AngleForVector(input);
         if (inputAngle < 0x80)
             UpdateFacing(input);
-        UpdateTopDownFlippers(inputAngle, attackJustPressed);
+        if (hasMermaidSuit)
+            UpdateTopDownMermaid(inputAngle, directionJustPressed);
+        else
+            UpdateTopDownFlippers(inputAngle, attackJustPressed);
         ApplyTopDownSwimMomentum();
         FinalizeTopDownSwimmingUpdate(movementStart);
         return true;
@@ -4990,13 +5002,17 @@ public partial class Player : Node2D
         CancelSwordAttack();
         CancelShovelAction();
         _topDownSwimmingState = 2;
-        _topDownSwimmingEntryCounter = parameters.EntryUpdates;
+        _topDownSwimmingEntryCounter =
+            _inventory.HasTreasure(TreasureId.MermaidSuit)
+                ? 0x02
+                : parameters.EntryUpdates;
         _topDownSwimAngle = entryAngle;
         _topDownSwimSpeedRaw = baseSpeed;
         _topDownSwimTargetSpeedRaw = baseSpeed;
         _topDownSwimVelocityCounter = 0;
         _topDownSwimBurstState = 0;
         _topDownSwimBurstCounter = 0;
+        _topDownSwimMermaidImpulseCounter = 0;
         _topDownSwimAnimationFrame = 0;
         _topDownSwimAnimationCounter =
             parameters.AnimationFrameDurations[0];
@@ -5105,6 +5121,32 @@ public partial class Player : Node2D
             inAir: false);
     }
 
+    private void UpdateTopDownMermaid(
+        int inputAngle,
+        bool directionJustPressed)
+    {
+        SideScrollPlayerParameters parameters = _world.SideScrollParameters;
+        _topDownSwimTargetSpeedRaw = RingEffects.UsesFastSwim(_inventory)
+            ? parameters.FastMermaidTargetSpeed
+            : parameters.MermaidTargetSpeed;
+        _topDownSwimVelocityCounter = 0x14;
+
+        if (directionJustPressed)
+        {
+            _topDownSwimMermaidImpulseCounter = 4;
+            _world.PlaySound(SoundId.SndSplash);
+        }
+        else
+        {
+            _topDownSwimMermaidImpulseCounter =
+                (_topDownSwimMermaidImpulseCounter - 1) & 0xff;
+            if ((_topDownSwimMermaidImpulseCounter & 0x80) != 0)
+                _topDownSwimMermaidImpulseCounter = 0xff;
+        }
+
+        UpdateTopDownSwimVelocity(inputAngle, inAir: false);
+    }
+
     private void AdvanceTopDownSwimmingAnimation()
     {
         if (--_topDownSwimAnimationCounter > 0)
@@ -5196,6 +5238,7 @@ public partial class Player : Node2D
         _topDownSwimVelocityCounter = 0;
         _topDownSwimBurstState = 0;
         _topDownSwimBurstCounter = 0;
+        _topDownSwimMermaidImpulseCounter = 0;
         _topDownSwimAnimationFrame = 0;
         _topDownSwimAnimationCounter = 0;
         _topDownDiving = false;
@@ -5208,7 +5251,8 @@ public partial class Player : Node2D
         Vector2 movementInput = default,
         int entryAngle = 0xff,
         bool attackJustPressed = false,
-        bool diveJustPressed = false)
+        bool diveJustPressed = false,
+        bool directionJustPressed = false)
     {
         if (_world.SideScrolling)
         {
@@ -5222,7 +5266,8 @@ public partial class Player : Node2D
                 entryAngle,
                 movementStart,
                 attackJustPressed,
-                diveJustPressed))
+                diveJustPressed,
+                directionJustPressed))
         {
             throw new InvalidOperationException(
                 "The validation top-down swimming update was not handled as water.");
