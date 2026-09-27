@@ -75,7 +75,7 @@ function Copy-VanillaGraphicsHeader([int]$pointer, [int]$bankBase, [byte[]]$vram
     } while ($more -ne 0)
 }
 
-Add-Type -AssemblyName System.Drawing
+. (Join-Path $PSScriptRoot 'Write-Png.ps1')
 # Resolve the vanilla source's symbolic header IDs and check every concrete
 # tileset byte against the hash-checked ROM before following ROM addresses.
 $headerIds = @{}
@@ -133,20 +133,22 @@ foreach ($id in 0..0x66) {
     if ($unique -ne 0) {
         Copy-VanillaGraphicsHeader ([BitConverter]::ToUInt16($romBytes, 0x11b28 + $unique * 2)) 0xc000 $vram
     }
-    $bitmap = [Drawing.Bitmap]::new(128, 128)
-    try {
-        foreach ($tile in 0..255) {
-            foreach ($y in 0..7) {
-                $low = $vram[$tile * 16 + $y * 2]; $high = $vram[$tile * 16 + $y * 2 + 1]
-                foreach ($x in 0..7) {
-                    $shade = (($low -shr (7 - $x)) -band 1) -bor ((($high -shr (7 - $x)) -band 1) -shl 1)
-                    $value = (3 - $shade) * 85
-                    $bitmap.SetPixel(($tile % 16) * 8 + $x, [int][Math]::Floor($tile / 16) * 8 + $y, [Drawing.Color]::FromArgb(255, $value, $value, $value))
-                }
+    $pixels = [byte[]]::new(128 * 128 * 4)
+    foreach ($tile in 0..255) {
+        foreach ($y in 0..7) {
+            $low = $vram[$tile * 16 + $y * 2]; $high = $vram[$tile * 16 + $y * 2 + 1]
+            foreach ($x in 0..7) {
+                $shade = (($low -shr (7 - $x)) -band 1) -bor ((($high -shr (7 - $x)) -band 1) -shl 1)
+                $value = [byte]((3 - $shade) * 85)
+                $pixel = (([int][Math]::Floor($tile / 16) * 8 + $y) * 128 + (($tile % 16) * 8 + $x)) * 4
+                $pixels[$pixel] = $value
+                $pixels[$pixel + 1] = $value
+                $pixels[$pixel + 2] = $value
+                $pixels[$pixel + 3] = 255
             }
         }
-        $bitmap.Save((Join-Path $destination "gfx/gfx_tileset${hex}.png"), [Drawing.Imaging.ImageFormat]::Png)
-    } finally { $bitmap.Dispose() }
+    }
+    Write-RgbaPng (Join-Path $destination "gfx/gfx_tileset${hex}.png") 128 128 $pixels
 }
 }
 Export-VanillaTilesets
