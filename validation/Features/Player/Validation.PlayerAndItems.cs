@@ -810,6 +810,27 @@ public sealed partial class ValidationRoot
             new Vector2(96, 80),
             new OracleRandom());
 
+        var mermaidInventory = new InventoryState(
+            _treasures,
+            OracleSaveData.CreateStandardGame());
+        mermaidInventory.GiveTreasure(TreasureId.Flippers, 0);
+        mermaidInventory.GiveTreasure(TreasureId.MermaidSuit, 0);
+        var mermaidWorld = new ValidationRingPlayerWorld
+        {
+            ActiveTerrain = seaWaterWorld.ActiveTerrain
+        };
+        var mermaid = new Player
+        {
+            Name = "TopDownMermaidSwimmingValidationPlayer"
+        };
+        AddChild(mermaid);
+        mermaid.Initialize(
+            mermaidWorld,
+            mermaidInventory,
+            new Vector2(104, 80),
+            new OracleRandom());
+        mermaid.SetPhysicsProcess(false);
+
         try
         {
             Input.ActionPress("move_right");
@@ -1113,9 +1134,83 @@ public sealed partial class ValidationRoot
                 !seaWater.IsDrowning || seaWater.TopDownSwimming ||
                 seaWaterWorld.DrowningSplashes.Count != 1 ||
                 seaWaterWorld.Sounds.Count(
-                    sound => sound == SoundId.SndDamageLink) != 1,
+                sound => sound == SoundId.SndDamageLink) != 1,
                 "Ages TILETYPE_SEAWATER `$fc incorrectly entered the " +
                 "normal-water Flippers path.");
+
+            Vector2 mermaidStart = mermaid.PrecisePosition;
+            mermaid.AdvanceTopDownSwimmingUpdateForValidation(
+                entryAngle: 0x08);
+            FailIf(
+                !mermaid.TopDownSwimming || mermaid.IsDrowning ||
+                mermaid.TopDownSwimmingState != 2 ||
+                mermaid.TopDownSwimmingEntryCounter != 0x02 ||
+                mermaidWorld.DrowningSplashes.Count != 1 ||
+                mermaidWorld.Sounds.Contains(SoundId.SndDamageLink),
+                "TREASURE_MERMAID_SUIT `$4a did not survive TILETYPE_SEAWATER " +
+                "`$fc or select its two-update entry lock.");
+            Vector2 mermaidEntryPosition = mermaid.PrecisePosition;
+
+            mermaid.AdvanceTopDownSwimmingUpdateForValidation(
+                Vector2.Right);
+            Vector2 mermaidAfterFirstLockedUpdate = mermaid.PrecisePosition;
+            mermaid.AdvanceTopDownSwimmingUpdateForValidation(
+                Vector2.Right,
+                directionJustPressed: true);
+            FailIf(
+                mermaid.TopDownSwimmingState != 3 ||
+                mermaid.TopDownSwimmingEntryCounter != 0 ||
+                mermaid.TopDownSwimTargetSpeedRaw != 0x2d ||
+                mermaid.TopDownSwimSpeedRaw != 0x19 ||
+                mermaid.TopDownSwimVelocityCounter != 0 ||
+                mermaid.TopDownSwimMermaidImpulseCounter != 4 ||
+                mermaid.TopDownSwimBurstState != 0 ||
+                mermaid.PrecisePosition != mermaidStart +
+                    new Vector2(0x80 / 256.0f + 0xa0 / 256.0f, 0) ||
+                mermaidWorld.Sounds.Count(
+                    sound => sound == SoundId.SndSplash) != 1,
+                "Top-down Mermaid movement did not switch to the imported " +
+                $"SPEED_120 target: state={mermaid.TopDownSwimmingState}, " +
+                $"entry={mermaid.TopDownSwimmingEntryCounter}, " +
+                $"target={mermaid.TopDownSwimTargetSpeedRaw:x2}, " +
+                $"speed={mermaid.TopDownSwimSpeedRaw:x2}, " +
+                $"velocityCounter={mermaid.TopDownSwimVelocityCounter:x2}, " +
+                $"impulse={mermaid.TopDownSwimMermaidImpulseCounter:x2}, " +
+                $"burst={mermaid.TopDownSwimBurstState}, " +
+                $"position={mermaid.PrecisePosition}, " +
+                $"entryPosition={mermaidEntryPosition}, " +
+                $"afterFirstLock={mermaidAfterFirstLockedUpdate}, " +
+                $"expected={mermaidStart + new Vector2(0x80 / 256.0f + 0xa0 / 256.0f, 0)}, " +
+                $"splashes={mermaidWorld.Sounds.Count(sound => sound == SoundId.SndSplash)}.");
+
+            mermaid.AdvanceTopDownSwimmingUpdateForValidation();
+            FailIf(
+                mermaid.TopDownSwimSpeedRaw != 0x14 ||
+                mermaid.TopDownSwimMermaidImpulseCounter != 3 ||
+                mermaid.TopDownSwimBurstState != 0,
+                "Top-down Mermaid swimming incorrectly used a held Flippers " +
+                "burst or lost the source four-update stroke window.");
+
+            Vector2 mermaidExitStart = mermaid.PrecisePosition;
+            mermaidWorld.ActiveTerrain = normal;
+            mermaid._PhysicsProcess(UpdateDelta);
+            FailIf(
+                mermaid.TopDownSwimming || mermaid.IsDrowning ||
+                mermaid.PrecisePosition != mermaidExitStart + Vector2.Right ||
+                mermaidWorld.DrowningSplashes.Count != 1,
+                "Leaving Mermaid Suit seawater did not return control to " +
+                "ordinary top-down movement without another splash.");
+
+            mermaidWorld.ActiveTerrain = seaWaterWorld.ActiveTerrain;
+            mermaid.AdvanceTopDownSwimmingUpdateForValidation(
+                entryAngle: 0x08);
+            FailIf(
+                !mermaid.TopDownSwimming || mermaid.IsDrowning ||
+                mermaid.TopDownSwimmingState != 2 ||
+                mermaid.TopDownSwimmingEntryCounter != 0x02 ||
+                mermaidWorld.DrowningSplashes.Count != 2,
+                "Re-entering TILETYPE_SEAWATER `$fc after a Mermaid Suit " +
+                "water exit did not begin a fresh swim state and splash.");
         }
         finally
         {
@@ -1124,15 +1219,18 @@ public sealed partial class ValidationRoot
             idleBurst.Free();
             noFlippers.Free();
             seaWater.Free();
+            mermaid.Free();
         }
 
         GD.Print(
-            "Validated top-down TREASURE_FLIPPERS `$2e swimming/diving: " +
+            "Validated top-down TREASURE_FLIPPERS `$2e swimming/diving and " +
+            "TREASURE_MERMAID_SUIT `$4a surface swimming: " +
             "canonical water entry/splash, `$0a trajectory lock, exact " +
             "func_5933 inertia, 6/6 directional animation, A-button " +
             "8/13/12 directional and idle-facing bursts with " +
             "SND_LINK_SWIM `$88, scrolling-state retention, B-toggle `$78 " +
-            "normal diving, 16/16 dive animation, ZORA_RING timer " +
+            "normal diving, 16/16 dive animation, Mermaid seawater entry, " +
+            "SPEED_120 strokes, exit and re-entry, ZORA_RING timer " +
             "suppression, current composition, water exit, and " +
             "no-Flippers/SeaWater drowning boundaries.");
     }
