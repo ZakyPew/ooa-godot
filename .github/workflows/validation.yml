@@ -209,7 +209,7 @@ jobs:
           source "$RUNNER_TEMP/wla-python/bin/activate"
           python -m pip install --quiet PyYAML
 
-          git clone --quiet https://github.com/vhelin/wla-dx.git "$wla_root"
+          git clone --quiet --no-checkout https://github.com/vhelin/wla-dx.git "$wla_root"
           git -C "$wla_root" fetch --quiet --depth 1 origin "$WLA_DX_SOURCE_SHA"
           git -C "$wla_root" checkout --quiet --detach FETCH_HEAD
           cmake -S "$wla_root" -B "$wla_build" \
