@@ -212,7 +212,8 @@ jobs:
           git clone --quiet https://github.com/vhelin/wla-dx.git "$wla_root"
           git -C "$wla_root" fetch --quiet --depth 1 origin "$WLA_DX_SOURCE_SHA"
           git -C "$wla_root" checkout --quiet --detach FETCH_HEAD
-          cmake -S "$wla_root" -B "$wla_build" -DCMAKE_BUILD_TYPE=Release
+          cmake -S "$wla_root" -B "$wla_build" \
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
           cmake --build "$wla_build" --config Release --parallel
 
           wla_gb="$(find "$wla_root" -type f -name wla-gb -print -quit)"
