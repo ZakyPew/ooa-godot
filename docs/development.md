@@ -3,7 +3,7 @@
 ## Requirements
 
 - Godot 4.7.1 with .NET support
-- .NET 8 SDK and PowerShell
+- .NET 8 SDK and PowerShell 7 (`pwsh`)
 - A clean US Oracle of Ages ROM with MD5
   `C4639CC61C049E5A085526BB6CAC03BB`
 - A local vanilla `oracles-disasm` checkout (`master`, not `hack-base`)
@@ -18,6 +18,14 @@ Godot console:  E:\Stuff\Gamedev\Godot\Godot_v4.7.1-stable_mono_win64_console.ex
 
 Pass `-Rom` or `-Disassembly` to the importer for other locations. Never commit
 the ROM.
+
+On macOS, install the .NET 8 SDK and PowerShell 7, then download the official
+Godot 4.7.1 .NET / Mono universal build from
+[Godot's 4.7.1 release](https://github.com/godotengine/godot-builds/releases/tag/4.7.1-stable).
+The GUI/editor and command-line executable are inside the extracted `.app`
+bundle. Set `GODOT_BIN` to the full path of its `Contents/MacOS/Godot`
+executable, or pass that path with `-Godot` when running the validation script.
+Use `pwsh` for the PowerShell importer and validation scripts.
 
 ## Common commands
 
@@ -57,11 +65,13 @@ group (`4` or `5`); the development loader performs the retail active-group
 switch to `6` or `7`.
 
 After building, run all headless validations with the standard 8 workers,
-or one exact registered method:
+or one exact registered method. The `godot` command below should be the
+platform's Godot .NET executable (`Godot.exe` on Windows or the executable
+inside the macOS app bundle):
 
 ```powershell
-$godot = 'E:\Stuff\Gamedev\Godot\Godot_v4.7.1-stable_mono_win64_console.exe'
-& .\tools\validate_parallel.ps1
+$godot = $env:GODOT_BIN
+& ./tools/validate_parallel.ps1 -Godot $godot
 & $godot --headless --path . --quit-after 10 -- --validate --validate-only=ValidateMethodName
 ```
 

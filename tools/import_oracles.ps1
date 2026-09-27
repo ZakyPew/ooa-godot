@@ -300,7 +300,7 @@ $automaticStageVariables = @(
     'args', 'error', 'executioncontext', 'false', 'foreach', 'host', 'input',
     'lastexitcode', 'matches', 'myinvocation', 'nestedpromptlevel', 'null',
     'ofs', 'pid', 'profile', 'psboundparameters', 'pscmdlet', 'pshome',
-    'psitem', 'pwd', 'shellid', 'stacktrace', 'switch', 'this', 'true', '_')
+    'psitem', 'psscriptroot', 'pwd', 'shellid', 'stacktrace', 'switch', 'this', 'true', '_')
 
 function Assert-ImportStageSourceContract(
     [ImportStageContract]$contract,

@@ -12,7 +12,7 @@ Fork this repository, create your feature branch from that branch, push it to
 your fork, and open a PR here with the base branch set to
 `codex/mod-asset-overlays`. Do not target the upstream project's repository.
 
-Example from an Epoch checkout:
+Example from an Epoch checkout (PowerShell on Windows or `pwsh` on macOS):
 
 ```powershell
 cd backends/ooa-godot
@@ -31,13 +31,51 @@ can then update the pinned submodule commit and link the reviewed Godot PR.
 
 - Godot 4.7.1 with .NET support
 - .NET 8 SDK
-- PowerShell for repository scripts
+- PowerShell 7 (`pwsh`) for repository scripts (Windows, macOS, or Linux)
 
-Run these from the repository root:
+### macOS setup (Apple silicon and Intel)
+
+1. Install the .NET 8 SDK and PowerShell 7. For example, with Homebrew:
+
+   ```sh
+   brew install --cask dotnet-sdk powershell
+   ```
+
+2. Download the official **Godot 4.7.1 .NET / Mono** macOS universal build from
+   [Godot's releases](https://github.com/godotengine/godot-builds/releases/tag/4.7.1-stable),
+   unzip it, and locate the executable inside the `.app` bundle, typically
+   `Godot_mono.app/Contents/MacOS/Godot`.
+3. From the repository root, run the build and full suite:
+
+   ```sh
+   dotnet build --configuration Debug --warnaserror
+   pwsh ./tools/validate_parallel.ps1 -Godot "/Applications/Godot_mono.app/Contents/MacOS/Godot"
+   git diff --check
+   ```
+
+   You can omit `-Godot` after adding the executable to `PATH` as `godot`, or
+   set `GODOT_BIN` to its full path. The validation runner starts headless
+   workers and writes per-worker diagnostics under the system temporary folder.
+
+To regenerate imported game assets, also clone the supported vanilla
+`oracles-disasm` checkout and point the importer at it and your locally held
+clean US ROM (the ROM must never be committed):
+
+   ```sh
+   pwsh ./tools/import_oracles.ps1 \
+     -Disassembly "/path/to/oracles-disasm" \
+     -Rom "/path/to/Oracle of Ages (US).gbc"
+   ```
+
+Windows contributors can use the same commands with their Godot console
+executable passed to `-Godot`; PowerShell 7 is recommended on every platform.
+
+Run these from the repository root in PowerShell 7 (`pwsh`) on Windows or macOS:
 
 ```powershell
 dotnet build
-& .\tools\validate_parallel.ps1
+$env:GODOT_BIN = 'C:\path\to\Godot_v4.7.1-stable_mono_win64_console.exe'
+& ./tools/validate_parallel.ps1
 git diff --check
 ```
 

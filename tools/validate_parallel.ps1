@@ -1,12 +1,27 @@
 param(
     [ValidateRange(1, 64)]
     [int]$Workers = 8,
-    [string]$Godot = 'E:\Stuff\Gamedev\Godot\Godot_v4.7.1-stable_mono_win64_console.exe',
+    [string]$Godot = '',
     [ValidateRange(1, 86400)]
     [int]$TimeoutSeconds = 600
 )
 
 $ErrorActionPreference = 'Stop'
+$resolvedGodot = $Godot
+if ([string]::IsNullOrWhiteSpace($resolvedGodot)) {
+    $resolvedGodot = $env:GODOT_BIN
+}
+if ([string]::IsNullOrWhiteSpace($resolvedGodot)) {
+    $command = Get-Command godot -ErrorAction SilentlyContinue
+    if ($null -ne $command) {
+        $resolvedGodot = $command.Source
+    }
+}
+if ([string]::IsNullOrWhiteSpace($resolvedGodot) -or
+    -not (Test-Path -LiteralPath $resolvedGodot -PathType Leaf)) {
+    throw 'Godot executable not found. Pass -Godot <path>, set GODOT_BIN, or add godot to PATH.'
+}
+$resolvedGodot = (Resolve-Path -LiteralPath $resolvedGodot).Path
 $projectRoot = Split-Path $PSScriptRoot -Parent
 $logRoot = Join-Path ([IO.Path]::GetTempPath()) ('ooa-validation-' + [Guid]::NewGuid().ToString('N'))
 [void][IO.Directory]::CreateDirectory($logRoot)
@@ -19,11 +34,11 @@ try {
         $stdout = Join-Path $logRoot "$index.stdout.log"
         $stderr = Join-Path $logRoot "$index.stderr.log"
         $engineLog = Join-Path $logRoot "$index.godot.log"
-        $process = Start-Process -FilePath $Godot -WorkingDirectory $projectRoot `
+        $process = Start-Process -FilePath $resolvedGodot -WorkingDirectory $projectRoot `
             -ArgumentList @('--headless', '--path', ('"' + $projectRoot + '"'),
                 '--log-file', ('"' + $engineLog + '"'), '--quit-after', '10',
                 '--', '--validate', "--validate-shard=$index/$Workers") `
-            -WindowStyle Hidden -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+            -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
         # Retain the native handle so Windows PowerShell can read ExitCode even
         # when the worker exits before we reach WaitForExit.
         $null = $process.Handle
