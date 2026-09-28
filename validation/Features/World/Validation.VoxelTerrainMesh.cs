@@ -5,7 +5,7 @@ namespace oracleofages;
 
 public sealed partial class ValidationRoot
 {
-    private static void ValidateVoxelTerrainMesh()
+    private void ValidateVoxelTerrainMesh()
     {
         using ArrayMesh isolated = VoxelTerrainMeshBuilder.Build(
             1, 1, [1], cellSize: 16.0f, levelHeight: 4.0f);
@@ -52,6 +52,21 @@ public sealed partial class ValidationRoot
             2, 1, [0, 0], cellSize: 16.0f, levelHeight: 4.0f);
         FailIf(empty.GetSurfaceCount() != 0,
             "A zero-height field must not produce visible geometry.");
+
+        OracleRoomData room = _rooms.GetRoom(0, 0x54);
+        byte[] collisionHeights = VoxelPreviewScreen.BuildCollisionHeightField(room);
+        FailIf(collisionHeights.Length != room.WidthInTiles * room.HeightInTiles,
+            "The collision preview must use playable room dimensions, not padded layout stride.");
+        for (int y = 0; y < room.HeightInTiles; y++)
+        for (int x = 0; x < room.WidthInTiles; x++)
+        {
+            Vector2 center = new(
+                x * OracleRoomData.MetatileSize + OracleRoomData.MetatileSize * 0.5f,
+                y * OracleRoomData.MetatileSize + OracleRoomData.MetatileSize * 0.5f);
+            byte expected = room.IsSolid(center) ? (byte)2 : (byte)1;
+            FailIf(collisionHeights[y * room.WidthInTiles + x] != expected,
+                "Each preview column must reflect Link-solid collision at its metatile center.");
+        }
     }
 
     private static void ValidateWinding(Vector3[] vertices, Vector3[] normals)

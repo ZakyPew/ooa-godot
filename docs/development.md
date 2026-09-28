@@ -126,6 +126,7 @@ Development-only controls:
 | F3 | Arrange a normal Maple encounter |
 | F4 | Spawn enemies and item drops at room coordinates |
 | F5 | Toggle 4× fast forward (also works in the title flow and menus) |
+| F6 | Toggle the experimental 3D collision-height preview for the current room |
 | V | Warp to the configured debug room (default `4:11`) |
 | Shift + 0-9 | Save a debug savestate |
 | 0-9 | Load a debug savestate |
@@ -133,6 +134,12 @@ Development-only controls:
 Fast forward starts disabled and displays `FF x4` beside the room ID while
 enabled. It runs extra complete 60 Hz updates, including audio sequencing;
 audio output may skip as its existing queue bounds latency.
+
+The F6 voxel preview is a developer-only visualization, not an alternate
+renderer or gameplay mode. It samples Link's current solid/non-solid collision
+at each metatile center and displays those samples as a simple height field;
+slopes, special collision, object heights, and authored elevations are not yet
+modeled. Closing it restores the unchanged 2D gameplay presentation.
 
 The F4 spawner pauses gameplay. Up/down selects a field; left/right changes
 the category, object ID/sub-ID variant, or coordinate (in eight-pixel steps).

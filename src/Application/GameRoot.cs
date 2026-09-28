@@ -184,6 +184,22 @@ public partial class GameRoot : Node2D
             return;
         }
 
+        if (@event is InputEventKey
+            {
+                PhysicalKeycode: Key.F6, Pressed: true, Echo: false,
+                CtrlPressed: false, AltPressed: false, MetaPressed: false,
+                ShiftPressed: false
+            } && _scene is not null && _scene.Visible && _transitions is not null &&
+            _frontendIntro is null && _mainMenu is null && _newGameIntro is null &&
+            !_transitions.IsTransitioning && !DialogueOpen && !MapMenuOpen &&
+            !InventoryMenuOpen && !RingMenuOpen && !DebugFlagMenuOpen &&
+            !_scene.SaveQuitScreen.Visible && !_scene.DebugObjectSpawnerScreen.Visible)
+        {
+            _scene!.VoxelPreview.Toggle(_rooms.CurrentRoom);
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
         if (_transitions is null ||
             _frontendIntro is not null ||
             _mainMenu is not null ||
