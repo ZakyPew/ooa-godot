@@ -43,6 +43,7 @@ public partial class GameSceneGraph : Node2D
     public RingMenuScreen RingMenuScreen { get; private set; } = null!;
     public DebugFlagScreen DebugFlagScreen { get; private set; } = null!;
     public DebugObjectSpawnerScreen DebugObjectSpawnerScreen { get; private set; } = null!;
+    public VoxelPreviewScreen VoxelPreview { get; private set; } = null!;
     public ColorRect MenuFade { get; private set; } = null!;
 
     public override void _Ready()
@@ -63,6 +64,7 @@ public partial class GameSceneGraph : Node2D
         RingMenuScreen = Unique<RingMenuScreen>("RingMenuScreen");
         DebugFlagScreen = Unique<DebugFlagScreen>("DebugFlagScreen");
         DebugObjectSpawnerScreen = Unique<DebugObjectSpawnerScreen>("DebugObjectSpawnerScreen");
+        VoxelPreview = Unique<VoxelPreviewScreen>("VoxelPreview");
         MenuFade = Unique<ColorRect>("MenuFade");
 
         if (WorldRoot.GetParent() != this || InterfaceLayer.GetParent() != this ||
@@ -76,6 +78,7 @@ public partial class GameSceneGraph : Node2D
             RingMenuScreen.GetParent() != InterfaceLayer ||
             DebugFlagScreen.GetParent() != InterfaceLayer ||
             DebugObjectSpawnerScreen.GetParent() != InterfaceLayer ||
+            VoxelPreview.GetParent() != InterfaceLayer ||
             MenuFade.GetParent() != InterfaceLayer)
         {
             throw new InvalidOperationException(
@@ -99,6 +102,7 @@ public partial class GameSceneGraph : Node2D
         RoomLoadReveal.Position = new Vector2(0, fieldTop);
         RoomDebug.Position = new Vector2(2, fieldTop);
         DebugObjectSpawnerScreen.Position = new Vector2(0, fieldTop);
+        VoxelPreview.Position = new Vector2(OracleRoomData.ViewportWidth - 78, fieldTop + 2);
         Dialogue.SetGameplayPresentationOffset(fieldTop - OracleRoomData.GameplayScreenTop);
     }
 

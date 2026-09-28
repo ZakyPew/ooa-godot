@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://src/Application/GameSceneGraph.cs" id="1_gameplay"]
 [ext_resource type="Script" path="res://src/Features/World/Rooms/RoomView.cs" id="2_room_view"]
@@ -12,6 +12,7 @@
 [ext_resource type="Script" path="res://src/Features/Menus/Inventory/RingMenuScreen.cs" id="10_ring_menu"]
 [ext_resource type="Script" path="res://src/Features/World/Transitions/RoomLoadColumnRevealOverlay.cs" id="11_room_load_reveal"]
 [ext_resource type="Script" path="res://src/Features/Development/DebugObjectSpawnerScreen.cs" id="12_debug_spawner"]
+[ext_resource type="Script" path="res://src/Features/Development/VoxelPreviewScreen.cs" id="13_voxel_preview"]
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_palette_fade"]
 blend_mode = 1
@@ -121,6 +122,17 @@ offset_bottom = 144.0
 mouse_filter = 2
 z_index = 110
 script = ExtResource("12_debug_spawner")
+
+[node name="VoxelPreview" type="Control" parent="Interface"]
+unique_name_in_owner = true
+visible = false
+offset_left = 82.0
+offset_top = 18.0
+offset_right = 158.0
+offset_bottom = 80.0
+mouse_filter = 2
+z_index = 115
+script = ExtResource("13_voxel_preview")
 
 [node name="Background" type="ColorRect" parent="Interface/DebugObjectSpawnerScreen"]
 offset_right = 160.0

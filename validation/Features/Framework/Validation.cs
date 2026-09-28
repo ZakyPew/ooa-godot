@@ -218,6 +218,7 @@ public sealed partial class ValidationRoot : GameRoot
         RunIsolatedValidation(ValidateTreasureInterpreter);
         RunIsolatedValidation(ValidateDungeonCollectibles);
         RunIsolatedValidation(ValidateRoomTileChanges);
+        RunIsolatedValidation(ValidateVoxelTerrainMesh);
         RunIsolatedValidation(ValidateExplicitSavePersistence);
         RunIsolatedValidation(ValidateMenuPresentationData);
         RunIsolatedValidation(ValidateFrontendIntro);
